@@ -1,0 +1,26 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+
+# VS Code
+.vscode/
+
+# Environment variables
+.env
+
+# Audio files
+*.wav
+
+# Temporary files
+structure.txt
+
+# Windows
+Thumbs.db
+
+# Database journals
+*.db-journal
