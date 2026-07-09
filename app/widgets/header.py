@@ -3,7 +3,7 @@ import customtkinter as ctk
 
 class Header(ctk.CTkFrame):
 
-    def __init__(self, master, clear_callback):
+    def __init__(self, master, clear_callback, settings_callback):
 
         super().__init__(master, corner_radius=12)
 
@@ -20,6 +20,19 @@ class Header(ctk.CTkFrame):
         )
 
         self.title.pack(side="left", padx=20, pady=15)
+
+        # ==========================
+        # Settings Button
+        # ==========================
+
+        self.settings_button = ctk.CTkButton(
+            self,
+            text="⚙️ Settings",
+            width=120,
+            command=settings_callback
+        )
+
+        self.settings_button.pack(side="right", padx=10)
 
         # ==========================
         # Clear Chat Button

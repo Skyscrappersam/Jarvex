@@ -1,49 +1,33 @@
 import customtkinter as ctk
+from app.widgets.chat_bubble import ChatBubble
 
 
-class ChatArea(ctk.CTkTextbox):
+class ChatArea(ctk.CTkScrollableFrame):
 
     def __init__(self, master):
 
         super().__init__(
             master,
-            width=900,
-            height=500,
-            font=("Arial", 15),
-            corner_radius=12
+            corner_radius=12,
+            fg_color="#1E1E1E"
         )
 
-        self.pack(padx=15, pady=10)
-
-        self.configure(state="disabled")
-
-        self.add_message(
-            "Jarvex",
-            "Hello Suraj! 👋\nHow can I help you today?"
+        self.pack(
+            fill="both",
+            expand=True,
+            padx=15,
+            pady=10
         )
 
     def add_message(self, sender, message):
 
-        self.configure(state="normal")
-
-        if sender == "You":
-            self.insert("end", f"👤 You: {message}\n\n")
-        else:
-            self.insert("end", f"🤖 Jarvex: {message}\n\n")
-
-        self.configure(state="disabled")
-
-        self.see("end")
+        ChatBubble(
+            self,
+            sender,
+            message
+        )
 
     def clear(self):
 
-        self.configure(state="normal")
-
-        self.delete("1.0", "end")
-
-        self.configure(state="disabled")
-
-        self.add_message(
-            "Jarvex",
-            "Hello Suraj! 👋\nHow can I help you today?"
-        )
+        for widget in self.winfo_children():
+            widget.destroy()

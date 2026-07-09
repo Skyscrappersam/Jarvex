@@ -6,19 +6,30 @@ from app.listener import listen
 
 from app.widgets.header import Header
 from app.widgets.chat_area import ChatArea
+from app.widgets.settings_window import SettingsWindow
 
-
-ctk.set_appearance_mode("dark")
-ctk.set_default_color_theme("blue")
+from app.config.settings import load_settings, save_settings
 
 
 class JarvexGUI:
 
     def __init__(self):
 
+        # ==========================
+        # Load Settings
+        # ==========================
+
+        self.settings = load_settings()
+
+        ctk.set_appearance_mode(
+            self.settings.get("theme", "dark").capitalize()
+        )
+
+        ctk.set_default_color_theme("blue")
+
         self.window = ctk.CTk()
 
-        self.voice_enabled = True
+        self.voice_enabled = self.settings.get("voice", True)
 
         self.window.title("🤖 Jarvex AI Assistant")
         self.window.geometry("950x700")
@@ -30,7 +41,8 @@ class JarvexGUI:
 
         self.header = Header(
             self.window,
-            self.clear_chat
+            self.clear_chat,
+            self.open_settings
         )
 
         # ==========================
@@ -39,18 +51,33 @@ class JarvexGUI:
 
         self.chat = ChatArea(self.window)
 
+        # Welcome Message
+        self.chat.add_message(
+            "Jarvex",
+            "Hello Suraj! 👋"
+        )
+
+        self.chat.add_message(
+            "Jarvex",
+            "How can I help you today?"
+        )
+
         # ==========================
-        # Bottom Input Area
+        # Bottom Frame
         # ==========================
 
-        bottom = ctk.CTkFrame(self.window, corner_radius=12)
+        bottom = ctk.CTkFrame(
+            self.window,
+            corner_radius=12
+        )
+
         bottom.pack(fill="x", padx=15, pady=15)
 
         self.entry = ctk.CTkEntry(
             bottom,
-            placeholder_text="Type your message...",
+            width=520,
             height=42,
-            width=520
+            placeholder_text="Type your message..."
         )
 
         self.entry.grid(row=0, column=0, padx=10, pady=15)
@@ -77,10 +104,14 @@ class JarvexGUI:
 
         self.voice_button = ctk.CTkButton(
             bottom,
-            text="🔊 Voice ON",
             width=120,
             command=self.toggle_voice
         )
+
+        if self.voice_enabled:
+            self.voice_button.configure(text="🔊 Voice ON")
+        else:
+            self.voice_button.configure(text="🔇 Voice OFF")
 
         self.voice_button.grid(row=0, column=3, padx=10)
 
@@ -88,13 +119,19 @@ class JarvexGUI:
 
         self.window.mainloop()
 
-    # ========================================
+    # ======================================
+
+    def open_settings(self):
+
+        SettingsWindow(self.window)
+
+    # ======================================
 
     def add_chat(self, speaker, message):
 
         self.chat.add_message(speaker, message)
 
-    # ========================================
+    # ======================================
 
     def clear_chat(self):
 
@@ -102,7 +139,7 @@ class JarvexGUI:
 
         self.header.set_status("🟢 Ready")
 
-    # ========================================
+    # ======================================
 
     def send_message(self, event=None):
 
@@ -131,13 +168,13 @@ class JarvexGUI:
 
         self.header.set_status("🟢 Ready")
 
-    # ========================================
+    # ======================================
 
     def voice_input(self):
 
         self.header.set_status("🎤 Listening...")
 
-        self.add_chat("Jarvex", "Listening...")
+        self.add_chat("Jarvex", "🎤 Listening...")
 
         self.window.update()
 
@@ -170,7 +207,7 @@ class JarvexGUI:
 
         self.header.set_status("🟢 Ready")
 
-    # ========================================
+    # ======================================
 
     def toggle_voice(self):
 
@@ -197,6 +234,10 @@ class JarvexGUI:
                 "Jarvex",
                 "Voice responses disabled."
             )
+
+        # Save setting
+        self.settings["voice"] = self.voice_enabled
+        save_settings(self.settings)
 
 
 if __name__ == "__main__":
