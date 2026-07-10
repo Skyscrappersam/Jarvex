@@ -1,13 +1,30 @@
-from app.assistant import ask_jarvex
-from app.automation import execute_command
-from app.weather import get_weather
-from app.internet import search_web
-from app.memory import remember, recall
+from app.core.ai_engine import AIEngine
+
+# Services
+from app.services.automation_service import execute_command
+from app.services.weather_service import get_weather
+from app.services.internet_service import search_web
+
+# Memory
+from app.memory.memory_manager import (
+    remember,
+    recall,
+    forget,
+    load_memory
+)
+
+# Intent Detection
+from app.core.intent_router import get_command
+
+# Date & Time
 from app.datetime_utils import (
     get_current_date,
     get_current_time,
     get_current_datetime
 )
+
+# AI Engine
+ai = AIEngine()
 
 
 internet_keywords = [
@@ -22,7 +39,7 @@ internet_keywords = [
     "football",
     "ipl",
     "bitcoin",
-    "gold price",
+    "gold",
     "share market"
 ]
 
@@ -32,9 +49,9 @@ def process_command(user):
     user = user.strip()
     user_lower = user.lower()
 
-    # ===============================
+    # ==========================================
     # Date & Time
-    # ===============================
+    # ==========================================
 
     if "date and time" in user_lower:
         return get_current_datetime()
@@ -45,9 +62,9 @@ def process_command(user):
     if user_lower == "time" or "current time" in user_lower:
         return get_current_time()
 
-    # ===============================
+    # ==========================================
     # Weather
-    # ===============================
+    # ==========================================
 
     if "weather" in user_lower:
 
@@ -77,9 +94,9 @@ def process_command(user):
 
         return get_weather(city)
 
-    # ===============================
+    # ==========================================
     # Memory
-    # ===============================
+    # ==========================================
 
     if user_lower.startswith("remember"):
 
@@ -89,42 +106,90 @@ def process_command(user):
 
             key, value = text.split(" is ", 1)
 
-            remember(key.strip().lower(), value.strip())
+            remember(
+                key.strip().lower(),
+                value.strip()
+            )
 
-            return f"Okay! I'll remember that {key.strip()} is {value.strip()}."
+            return (
+                f"🧠 Okay! I'll remember that "
+                f"{key.strip()} is {value.strip()}."
+            )
 
-        return "Please say something like: Remember favorite color is blue."
+        return (
+            "Please say something like:\n"
+            "Remember favorite color is blue."
+        )
 
-    if user_lower.startswith("what is"):
+    if (
+        user_lower.startswith("what is")
+        or user_lower.startswith("what's")
+    ):
 
-        key = user[7:].strip().lower()
+        if user_lower.startswith("what is"):
+            key = user[7:].strip().lower()
+        else:
+            key = user[6:].strip().lower()
 
         value = recall(key)
 
         if value:
-            return f"{key.title()} is {value}."
+            return f"🧠 {key.title()} is {value}."
 
-    # ===============================
+    if user_lower.startswith("forget"):
+
+        key = user[6:].strip().lower()
+
+        forget(key)
+
+        return f"🗑️ I forgot '{key}'."
+
+    if user_lower == "show memory":
+
+        memory = load_memory()
+
+        if not memory:
+            return "🧠 My memory is empty."
+
+        response = "🧠 Here's what I remember:\n\n"
+
+        for key, value in memory.items():
+            response += f"• {key.title()} : {value}\n"
+
+        return response
+
+    # ==========================================
+    # Intent Detection
+    # ==========================================
+
+    intent_command = get_command(user)
+
+    if intent_command:
+
+        result = execute_command(intent_command)
+
+        if result:
+            return result
+
+    # ==========================================
     # Automation
-    # ===============================
+    # ==========================================
 
     result = execute_command(user)
 
     if result:
         return result
 
-    # ===============================
-    # Internet
-    # ===============================
+    # ==========================================
+    # Internet Search
+    # ==========================================
 
     if any(keyword in user_lower for keyword in internet_keywords):
 
-        result = search_web(user)
+        return search_web(user)
 
-        return result
+    # ==========================================
+    # AI Provider
+    # ==========================================
 
-    # ===============================
-    # AI Chat
-    # ===============================
-
-    return ask_jarvex(user)
+    return ai.ask(user)

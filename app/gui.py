@@ -2,8 +2,9 @@ import threading
 import customtkinter as ctk
 
 from app.router import process_command
-from app.voice import speak
-from app.listener import listen
+
+from app.services.voice_service import speak
+from app.services.listener_service import listen
 
 from app.widgets.header import Header
 from app.widgets.chat_area import ChatArea
@@ -59,15 +60,12 @@ class JarvexGUI:
 
         self.chat = ChatArea(self.window)
 
-        # ==========================
-        # Load Conversation History
-        # ==========================
-
         history = load_history()
 
         if history:
 
             for item in history:
+
                 self.chat.add_message(
                     item["sender"],
                     item["message"]
@@ -97,7 +95,11 @@ class JarvexGUI:
             corner_radius=12
         )
 
-        bottom.pack(fill="x", padx=15, pady=15)
+        bottom.pack(
+            fill="x",
+            padx=15,
+            pady=15
+        )
 
         self.entry = ctk.CTkEntry(
             bottom,
@@ -106,7 +108,12 @@ class JarvexGUI:
             placeholder_text="Type your message..."
         )
 
-        self.entry.grid(row=0, column=0, padx=10, pady=15)
+        self.entry.grid(
+            row=0,
+            column=0,
+            padx=10,
+            pady=15
+        )
 
         self.entry.bind("<Return>", self.send_message)
 
@@ -117,7 +124,11 @@ class JarvexGUI:
             command=self.send_message
         )
 
-        self.send_button.grid(row=0, column=1, padx=5)
+        self.send_button.grid(
+            row=0,
+            column=1,
+            padx=5
+        )
 
         self.mic_button = ctk.CTkButton(
             bottom,
@@ -126,7 +137,11 @@ class JarvexGUI:
             command=self.voice_input
         )
 
-        self.mic_button.grid(row=0, column=2, padx=5)
+        self.mic_button.grid(
+            row=0,
+            column=2,
+            padx=5
+        )
 
         self.voice_button = ctk.CTkButton(
             bottom,
@@ -134,12 +149,13 @@ class JarvexGUI:
             command=self.toggle_voice
         )
 
-        if self.voice_enabled:
-            self.voice_button.configure(text="🔊 Voice ON")
-        else:
-            self.voice_button.configure(text="🔇 Voice OFF")
+        self.update_voice_button()
 
-        self.voice_button.grid(row=0, column=3, padx=10)
+        self.voice_button.grid(
+            row=0,
+            column=3,
+            padx=10
+        )
 
         self.entry.focus()
 
@@ -149,15 +165,54 @@ class JarvexGUI:
 
     def open_settings(self):
 
-        SettingsWindow(self.window)
+        settings_window = SettingsWindow(self.window)
+
+        self.window.wait_window(settings_window)
+
+        self.settings = load_settings()
+
+        self.voice_enabled = self.settings.get("voice", True)
+
+        self.update_voice_button()
+
+        ctk.set_appearance_mode(
+            self.settings.get("theme", "dark").capitalize()
+        )
+
+        self.add_chat(
+            "Jarvex",
+            "✅ Settings saved successfully.\nRestart Jarvex to fully apply theme changes."
+        )
+
+    # ======================================
+
+    def update_voice_button(self):
+
+        if self.voice_enabled:
+
+            self.voice_button.configure(
+                text="🔊 Voice ON"
+            )
+
+        else:
+
+            self.voice_button.configure(
+                text="🔇 Voice OFF"
+            )
 
     # ======================================
 
     def add_chat(self, speaker, message):
 
-        self.chat.add_message(speaker, message)
+        self.chat.add_message(
+            speaker,
+            message
+        )
 
-        add_message(speaker, message)
+        add_message(
+            speaker,
+            message
+        )
 
     # ======================================
 
@@ -214,7 +269,10 @@ class JarvexGUI:
 
         self.typing.stop()
 
-        self.add_chat("Jarvex", reply)
+        self.add_chat(
+            "Jarvex",
+            reply
+        )
 
         if self.voice_enabled:
 
@@ -253,7 +311,10 @@ class JarvexGUI:
 
             return
 
-        self.add_chat("You", user)
+        self.add_chat(
+            "You",
+            user
+        )
 
         self.entry.configure(state="disabled")
         self.send_button.configure(state="disabled")
@@ -285,11 +346,13 @@ class JarvexGUI:
 
         self.voice_enabled = not self.voice_enabled
 
-        if self.voice_enabled:
+        self.update_voice_button()
 
-            self.voice_button.configure(
-                text="🔊 Voice ON"
-            )
+        self.settings["voice"] = self.voice_enabled
+
+        save_settings(self.settings)
+
+        if self.voice_enabled:
 
             self.add_chat(
                 "Jarvex",
@@ -298,18 +361,10 @@ class JarvexGUI:
 
         else:
 
-            self.voice_button.configure(
-                text="🔇 Voice OFF"
-            )
-
             self.add_chat(
                 "Jarvex",
                 "Voice responses disabled."
             )
-
-        self.settings["voice"] = self.voice_enabled
-
-        save_settings(self.settings)
 
 
 if __name__ == "__main__":
