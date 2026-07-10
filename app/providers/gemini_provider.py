@@ -10,9 +10,22 @@ class GeminiProvider:
 
         self.client = GeminiClient()
 
+    # =====================================
+    # Normal Response
+    # =====================================
+
     def ask(self, prompt):
 
         return self.client.ask(prompt)
+
+    # =====================================
+    # Streaming Response
+    # =====================================
+
+    def stream(self, prompt):
+
+        for chunk in self.client.stream(prompt):
+            yield chunk
 
 
 register(

@@ -1,7 +1,12 @@
 import threading
 import customtkinter as ctk
 
-from app.router import process_command
+from app.router import (
+    process_command,
+    process_command_stream
+)
+
+from app.streaming.stream_manager import StreamManager
 
 from app.services.voice_service import speak
 from app.services.listener_service import listen
@@ -11,7 +16,10 @@ from app.widgets.chat_area import ChatArea
 from app.widgets.settings_window import SettingsWindow
 from app.widgets.typing_indicator import TypingIndicator
 
-from app.config.settings import load_settings, save_settings
+from app.config.settings import (
+    load_settings,
+    save_settings
+)
 
 from app.history.history_manager import (
     load_history,
@@ -25,7 +33,7 @@ class JarvexGUI:
     def __init__(self):
 
         # ==========================
-        # Load Settings
+        # Settings
         # ==========================
 
         self.settings = load_settings()
@@ -36,12 +44,23 @@ class JarvexGUI:
 
         ctk.set_default_color_theme("blue")
 
+        self.voice_enabled = self.settings.get(
+            "voice",
+            True
+        )
+
+        self.stream_manager = StreamManager()
+
+        # ==========================
+        # Window
+        # ==========================
+
         self.window = ctk.CTk()
 
-        self.voice_enabled = self.settings.get("voice", True)
-
         self.window.title("🤖 Jarvex AI Assistant")
+
         self.window.geometry("950x700")
+
         self.window.resizable(False, False)
 
         # ==========================
@@ -55,10 +74,12 @@ class JarvexGUI:
         )
 
         # ==========================
-        # Chat Area
+        # Chat
         # ==========================
 
-        self.chat = ChatArea(self.window)
+        self.chat = ChatArea(
+            self.window
+        )
 
         history = load_history()
 
@@ -83,11 +104,18 @@ class JarvexGUI:
                 "How can I help you today?"
             )
 
-            add_message("Jarvex", "Hello Suraj! 👋")
-            add_message("Jarvex", "How can I help you today?")
+            add_message(
+                "Jarvex",
+                "Hello Suraj! 👋"
+            )
+
+            add_message(
+                "Jarvex",
+                "How can I help you today?"
+            )
 
         # ==========================
-        # Bottom Frame
+        # Bottom Bar
         # ==========================
 
         bottom = ctk.CTkFrame(
@@ -115,7 +143,10 @@ class JarvexGUI:
             pady=15
         )
 
-        self.entry.bind("<Return>", self.send_message)
+        self.entry.bind(
+            "<Return>",
+            self.send_message
+        )
 
         self.send_button = ctk.CTkButton(
             bottom,
@@ -161,30 +192,40 @@ class JarvexGUI:
 
         self.window.mainloop()
 
-    # ======================================
+    # =====================================
 
     def open_settings(self):
 
-        settings_window = SettingsWindow(self.window)
+        settings_window = SettingsWindow(
+            self.window
+        )
 
-        self.window.wait_window(settings_window)
+        self.window.wait_window(
+            settings_window
+        )
 
         self.settings = load_settings()
 
-        self.voice_enabled = self.settings.get("voice", True)
+        self.voice_enabled = self.settings.get(
+            "voice",
+            True
+        )
 
         self.update_voice_button()
 
         ctk.set_appearance_mode(
-            self.settings.get("theme", "dark").capitalize()
+            self.settings.get(
+                "theme",
+                "dark"
+            ).capitalize()
         )
 
         self.add_chat(
             "Jarvex",
-            "✅ Settings saved successfully.\nRestart Jarvex to fully apply theme changes."
+            "✅ Settings saved successfully."
         )
 
-    # ======================================
+    # =====================================
 
     def update_voice_button(self):
 
@@ -200,9 +241,13 @@ class JarvexGUI:
                 text="🔇 Voice OFF"
             )
 
-    # ======================================
+    # =====================================
 
-    def add_chat(self, speaker, message):
+    def add_chat(
+        self,
+        speaker,
+        message
+    ):
 
         self.chat.add_message(
             speaker,
@@ -214,7 +259,7 @@ class JarvexGUI:
             message
         )
 
-    # ======================================
+    # =====================================
 
     def clear_chat(self):
 
@@ -222,8 +267,82 @@ class JarvexGUI:
 
         clear_history()
 
-        self.header.set_status("🟢 Ready")
+        self.header.set_status(
+            "🟢 Ready"
+        )
 
+    # =====================================
+    # Streaming AI
+    # =====================================
+
+    def stream_ai_response(self, user):
+
+        full_text = ""
+
+        self.window.after(
+            0,
+            lambda: self.chat.start_stream(
+                "Jarvex"
+            )
+        )
+
+        for chunk in process_command_stream(user):
+
+            full_text += chunk
+
+            self.window.after(
+                0,
+                lambda text=full_text:
+                self.chat.update_stream(text)
+            )
+
+        self.window.after(
+            0,
+            lambda:
+            self.finish_stream(full_text)
+        )
+
+    # =====================================
+
+    def finish_stream(self, reply):
+
+        self.typing.stop()
+
+        self.chat.finish_stream()
+
+        add_message(
+            "Jarvex",
+            reply
+        )
+
+        if self.voice_enabled:
+
+            threading.Thread(
+                target=speak,
+                args=(reply,),
+                daemon=True
+            ).start()
+
+        self.entry.configure(
+            state="normal"
+        )
+
+        self.send_button.configure(
+            state="normal"
+        )
+
+        self.mic_button.configure(
+            state="normal"
+        )
+
+        self.entry.focus()
+
+        self.header.set_status(
+            "🟢 Ready"
+        )
+
+            # ======================================
+    # Send Message
     # ======================================
 
     def send_message(self, event=None):
@@ -233,25 +352,46 @@ class JarvexGUI:
         if not user:
             return
 
-        self.add_chat("You", user)
+        self.add_chat(
+            "You",
+            user
+        )
 
-        self.entry.delete(0, "end")
+        self.entry.delete(
+            0,
+            "end"
+        )
 
-        self.entry.configure(state="disabled")
-        self.send_button.configure(state="disabled")
-        self.mic_button.configure(state="disabled")
+        self.entry.configure(
+            state="disabled"
+        )
 
-        self.header.set_status("🤖 Thinking...")
+        self.send_button.configure(
+            state="disabled"
+        )
 
-        self.typing = TypingIndicator(self.chat)
+        self.mic_button.configure(
+            state="disabled"
+        )
+
+        self.header.set_status(
+            "🤖 Thinking..."
+        )
+
+        self.typing = TypingIndicator(
+            self.chat
+        )
+
         self.typing.start()
 
         threading.Thread(
-            target=self.process_text_request,
+            target=self.stream_ai_response,
             args=(user,),
             daemon=True
         ).start()
 
+    # ======================================
+    # Legacy Non-stream Method
     # ======================================
 
     def process_text_request(self, user):
@@ -260,7 +400,8 @@ class JarvexGUI:
 
         self.window.after(
             0,
-            lambda: self.finish_response(reply)
+            lambda:
+            self.finish_response(reply)
         )
 
     # ======================================
@@ -276,27 +417,39 @@ class JarvexGUI:
 
         if self.voice_enabled:
 
-            self.header.set_status("🔊 Speaking...")
-
             threading.Thread(
                 target=speak,
                 args=(reply,),
                 daemon=True
             ).start()
 
-        self.entry.configure(state="normal")
-        self.send_button.configure(state="normal")
-        self.mic_button.configure(state="normal")
+        self.entry.configure(
+            state="normal"
+        )
+
+        self.send_button.configure(
+            state="normal"
+        )
+
+        self.mic_button.configure(
+            state="normal"
+        )
 
         self.entry.focus()
 
-        self.header.set_status("🟢 Ready")
+        self.header.set_status(
+            "🟢 Ready"
+        )
 
+    # ======================================
+    # Voice Input
     # ======================================
 
     def voice_input(self):
 
-        self.header.set_status("🎤 Listening...")
+        self.header.set_status(
+            "🎤 Listening..."
+        )
 
         user = listen()
 
@@ -307,7 +460,9 @@ class JarvexGUI:
                 "I didn't hear anything."
             )
 
-            self.header.set_status("🟢 Ready")
+            self.header.set_status(
+                "🟢 Ready"
+            )
 
             return
 
@@ -316,15 +471,26 @@ class JarvexGUI:
             user
         )
 
-        self.entry.configure(state="disabled")
-        self.send_button.configure(state="disabled")
-        self.mic_button.configure(state="disabled")
+        self.entry.configure(
+            state="disabled"
+        )
 
-        self.typing = TypingIndicator(self.chat)
+        self.send_button.configure(
+            state="disabled"
+        )
+
+        self.mic_button.configure(
+            state="disabled"
+        )
+
+        self.typing = TypingIndicator(
+            self.chat
+        )
+
         self.typing.start()
 
         threading.Thread(
-            target=self.process_voice_request,
+            target=self.stream_ai_response,
             args=(user,),
             daemon=True
         ).start()
@@ -337,20 +503,29 @@ class JarvexGUI:
 
         self.window.after(
             0,
-            lambda: self.finish_response(reply)
+            lambda:
+            self.finish_response(reply)
         )
 
+    # ======================================
+    # Voice Toggle
     # ======================================
 
     def toggle_voice(self):
 
-        self.voice_enabled = not self.voice_enabled
+        self.voice_enabled = (
+            not self.voice_enabled
+        )
 
         self.update_voice_button()
 
-        self.settings["voice"] = self.voice_enabled
+        self.settings["voice"] = (
+            self.voice_enabled
+        )
 
-        save_settings(self.settings)
+        save_settings(
+            self.settings
+        )
 
         if self.voice_enabled:
 
@@ -367,5 +542,10 @@ class JarvexGUI:
             )
 
 
+# ==========================================
+# Launch
+# ==========================================
+
 if __name__ == "__main__":
+
     JarvexGUI()

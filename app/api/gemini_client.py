@@ -18,8 +18,11 @@ class GeminiClient:
             api_key=api_key
         )
 
-        # Working model alias
         self.model = "gemini-flash-latest"
+
+    # ===================================
+    # Normal Response
+    # ===================================
 
     def ask(self, prompt):
 
@@ -30,34 +33,33 @@ class GeminiClient:
                 contents=prompt
             )
 
-            if hasattr(response, "text") and response.text:
+            if response.text:
                 return response.text
 
             return "Sorry, Gemini returned an empty response."
 
         except Exception as e:
 
-            error = str(e)
+            return f"❌ Gemini Error:\n{e}"
 
-            if "RESOURCE_EXHAUSTED" in error:
-                return (
-                    "⚠️ Gemini quota exceeded.\n"
-                    "Please wait a minute and try again."
-                )
+    # ===================================
+    # Streaming Response
+    # ===================================
 
-            elif "NOT_FOUND" in error:
-                return (
-                    "⚠️ Gemini model not found."
-                )
+    def stream(self, prompt):
 
-            elif "PERMISSION_DENIED" in error:
-                return (
-                    "⚠️ Invalid Gemini API Key."
-                )
+        try:
 
-            elif "UNAUTHENTICATED" in error:
-                return (
-                    "⚠️ Authentication failed. Check your API key."
-                )
+            stream = self.client.models.generate_content_stream(
+                model=self.model,
+                contents=prompt
+            )
 
-            return f"❌ Gemini Error:\n{error}"
+            for chunk in stream:
+
+                if hasattr(chunk, "text") and chunk.text:
+                    yield chunk.text
+
+        except Exception as e:
+
+            yield f"\n❌ Gemini Error:\n{e}"
